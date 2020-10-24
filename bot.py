@@ -121,17 +121,24 @@ def get_post(offset=1):
 
     # на случай встречи с медиафайлами (пока что реализованы фото и тамб к видео)
     try:
-        media = json_data['response']['items'][0]["attachments"]
+        attachments = json_data['response']['items'][0]["attachments"]
 
         media_arr = []
-        for i in media:
-            if "photo" in i:
-                media_arr.append(i["photo"]["src_xbig"])
-                # TODO "attachments": [ {"type":"photo","photo":{"sizes":[{"height":max,"url":"...\/...","type":"x","width":max}, {snd image}]
-            if "video" in i:
-                media_arr.append("http://vk.com/video" + i["video"]["owner_id"] + "_" + i["video"]["vid"])
-            if "doc" in i:
-                media_arr.append(i["doc"]["url"])
+        for media in attachments:
+            if "photo" in media:
+                # самая большая фотография len(media["photo"]["sizes"]) - 1
+                media_arr.append(media["photo"]["sizes"][(len(media["photo"]["sizes"]) - 1)]["url"])
+                # TODO media: [
+                #               {"photo": {"sizes":[ 
+                #                                     {"url":"...\/jpg"},
+                #                                     {...} 
+                #                                  ], 
+                #               {...} 
+                #             ]
+            #if "video" in media:
+                #media_arr.append("http://vk.com/video" + media["video"]["owner_id"] + "_" + media["video"]["vid"])
+            #if "doc" in media:
+                #media_arr.append(media["doc"]["url"])
         cooked.append(media_arr)
     except:
         pass
@@ -158,7 +165,7 @@ async def checker():
         last_post_id = int(t.read())
 
     while not bot.is_closed():
-        #print('\nchecking... ' + str(datetime.now()) + '__' + str(time.time()))
+        print('\nchecking... ' + str(datetime.now()) + '__' + str(time.time()))
         
         #last_posts = 1
         #is_pinned = 1
@@ -232,6 +239,7 @@ async def checker():
         # рассылаем каждому нужное кол-во новых постов
             cprint('sending...\n', 'green')
             text_to_send = []
+            timestamps = []
             
             # от 0 до [найденых постов -1(только если есть закреп)]
             for post_cur in range(last_posts - is_pinned):
@@ -239,11 +247,13 @@ async def checker():
                 post = get_post(last_posts - 1 - post_cur)
                 # заполняем массив текста для поэтапной отправки
                 text_to_send.append(post[0])
+                timestamps.append(post[1])
+                post_ids.append(post[2])
                 
                 # если в массиве поста есть фото
                 photo_to_send = []
                 if len(post) > 3:
-                    for i in post[2]:
+                    for i in post[3]:
                         photo_to_send.append(i)
             
             # собственно попытка отправки
@@ -253,17 +263,22 @@ async def checker():
                     # задаем переменную канала
                     channel = bot.get_channel(chat_ids[ids_cur])
                     
-                    #print('trying to send. channel name - ' + str(channel.name) + ', id - ' + str(chat_ids[ids_cur]))
+                    #print('trying to send. channel name - ' + str(channel.name) + ', channel_id - ' + str(chat_ids[ids_cur]))
                     # для каждого текста в масиве текстов
                     for text_cur in range(len(text_to_send)):
-                        embedVar = discord.Embed(title="", description=str(text_to_send[text_cur]), color=0x00ff00)
+                        embedVar = discord.Embed(title="", description=str("[Посмотреть на стене](https://vk.com/club" + config.vk_group_id + "?w=wall-" + config.vk_group_id + "_" + str(post_ids[text_cur]) + ")" + "\n\n" + text_to_send[text_cur]), color=0x00ff00)
+                        embedVar.timestamp = datetime.fromtimestamp(timestamps[text_cur])
+                        
                         if str(text_to_send[text_cur]) != '':
                             await channel.send(embed=embedVar)
                             
                         if photo_to_send:
                             for i in photo_to_send:
-                                await channel.send(str(i))
-                                #yield from client.send_file(client.get_channel(str(id_)), str(i))
+                                embedVar = discord.Embed(title="", description=str("[Посмотреть на стене](https://vk.com/club" + config.vk_group_id + "?w=wall-" + config.vk_group_id + "_" + str(post_ids[text_cur]) + ")" + "\n\n"), color=0x00ff00)
+                                embedVar.timestamp = datetime.fromtimestamp(timestamps[text_cur])
+                                embedVar.set_image(url=str(i))
+                                await channel.send(embed=embedVar)
+                                #embedVar.set_image(url=str(i))
                 
                 print('      ')
                 for text_cur in range(len(text_to_send)):

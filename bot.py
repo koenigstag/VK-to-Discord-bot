@@ -36,7 +36,7 @@ async def halt(msg):
 async def start(message):
     # парсим /start и подписываем новые ид на раздачу новостей
     
-    await message.author.send(vk_bot_config.start_greeting)
+    await message.author.send(config.start_greeting)
 
     print(str(message.channel.id) + " !start")
 

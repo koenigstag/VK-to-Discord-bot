@@ -36,7 +36,7 @@ async def halt(msg):
 async def start(message):
     # парсим /start и подписываем новые ид на раздачу новостей
     
-    await message.author.send(config.start_greeting)
+    await message.author.send(vk_bot_config.start_greeting)
 
     print(str(message.channel.id) + " !start")
 
@@ -121,20 +121,13 @@ def get_post(offset=1):
 
     # на случай встречи с медиафайлами (пока что реализованы фото и тамб к видео)
     try:
-        attachments = json_data['response']['items'][0]["attachments"]
+        media = json_data['response']['items'][0]["attachments"]
 
         media_arr = []
         for media in attachments:
             if "photo" in media:
-                # самая большая фотография len(media["photo"]["sizes"]) - 1
                 media_arr.append(media["photo"]["sizes"][(len(media["photo"]["sizes"]) - 1)]["url"])
-                # TODO media: [
-                #               {"photo": {"sizes":[ 
-                #                                     {"url":"...\/jpg"},
-                #                                     {...} 
-                #                                  ], 
-                #               {...} 
-                #             ]
+                # TODO "attachments": [ {"type":"photo","photo":{"sizes":[{"height":max,"url":"...\/...","type":"x","width":max}, {snd image}]
             #if "video" in media:
                 #media_arr.append("http://vk.com/video" + media["video"]["owner_id"] + "_" + media["video"]["vid"])
             #if "doc" in media:
@@ -165,7 +158,7 @@ async def checker():
         last_post_id = int(t.read())
 
     while not bot.is_closed():
-        print('\nchecking... ' + str(datetime.now()) + '__' + str(time.time()))
+        #print('\nchecking... ' + str(datetime.now()) + '__' + str(time.time()))
         
         #last_posts = 1
         #is_pinned = 1
@@ -240,6 +233,7 @@ async def checker():
             cprint('sending...\n', 'green')
             text_to_send = []
             timestamps = []
+            post_ids = []
             
             # от 0 до [найденых постов -1(только если есть закреп)]
             for post_cur in range(last_posts - is_pinned):
@@ -278,7 +272,8 @@ async def checker():
                                 embedVar.timestamp = datetime.fromtimestamp(timestamps[text_cur])
                                 embedVar.set_image(url=str(i))
                                 await channel.send(embed=embedVar)
-                                #embedVar.set_image(url=str(i))
+                                #await channel.send(str(i))
+                                #yield from client.send_file(client.get_channel(str(id_)), str(i))
                 
                 print('      ')
                 for text_cur in range(len(text_to_send)):
